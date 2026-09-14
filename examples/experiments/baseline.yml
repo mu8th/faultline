@@ -1,0 +1,37 @@
+# Baseline: no faults at all. Proves the platform measures correctly before we
+# break anything -- both hypotheses should PASS on a healthy target.
+name: baseline
+description: Healthy-target sanity check; verifies SLO measurement with no faults injected.
+
+target:
+  kind: subprocess
+  command: ["{python}", "-m", "examples.target.shop", "--port", "{port}"]
+  cwd: ../..
+  health_url: "http://127.0.0.1:{port}/health"
+  wait_timeout_s: 20
+
+probes:
+  - url: "http://127.0.0.1:{port}/api/orders"
+    method: POST
+    body: {product_id: sku-001, quantity: 1}
+    interval_s: 0.5
+  - url: "http://127.0.0.1:{port}/health"
+    method: GET
+    interval_s: 0.5
+
+faults: []
+
+windows:
+  baseline_s: 4
+  recovery_s: 2
+
+slo:
+  - name: orders stay fast on a healthy target
+    window: baseline
+    probe: 0
+    p95_latency_ms: 300
+    error_rate_max: 0.05
+  - name: health endpoint never fails
+    window: baseline
+    probe: 1
+    error_rate_max: 0.0

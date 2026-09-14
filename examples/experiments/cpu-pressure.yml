@@ -1,0 +1,46 @@
+# CPU pressure: eight burner processes for the fault duration (full saturation
+# on a typical 8-core machine). The tight p95 hypothesis is EXPECTED TO FAIL
+# (that is the point -- the platform must catch the degradation), while
+# survivability and recovery should PASS.
+name: cpu-pressure
+description: Eight CPU-burner workers during the fault window; catches p95 latency breach.
+
+target:
+  kind: subprocess
+  command: ["{python}", "-m", "examples.target.shop", "--port", "{port}"]
+  cwd: ../..
+  health_url: "http://127.0.0.1:{port}/health"
+  wait_timeout_s: 20
+
+probes:
+  - url: "http://127.0.0.1:{port}/api/orders"
+    method: POST
+    body: {product_id: sku-001, quantity: 1}
+    interval_s: 0.5
+  - url: "http://127.0.0.1:{port}/health"
+    method: GET
+    interval_s: 0.5
+
+faults:
+  - type: cpu_pressure
+    duration_s: 8
+    params: {workers: 8}
+
+windows:
+  baseline_s: 3
+  recovery_s: 3
+
+slo:
+  - name: orders stay fast under CPU pressure
+    window: fault
+    probe: 0
+    p95_latency_ms: 25
+  - name: service survives CPU pressure
+    window: fault
+    probe: 0
+    error_rate_max: 0.1
+  - name: recovers cleanly after pressure ends
+    window: recovery
+    probe: 0
+    p95_latency_ms: 300
+    error_rate_max: 0.05

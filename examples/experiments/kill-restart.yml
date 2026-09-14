@@ -1,0 +1,41 @@
+# Kill & restart: the target process is killed, then restarted after 3s. Some
+# downtime during the fault window is acceptable (bounded by the restart delay);
+# the recovery window must be fully healthy again.
+name: kill-restart
+description: Process kill with automatic restart; verifies bounded downtime and clean recovery.
+
+target:
+  kind: subprocess
+  command: ["{python}", "-m", "examples.target.shop", "--port", "{port}"]
+  cwd: ../..
+  health_url: "http://127.0.0.1:{port}/health"
+  wait_timeout_s: 20
+
+probes:
+  - url: "http://127.0.0.1:{port}/api/orders"
+    method: POST
+    body: {product_id: sku-001, quantity: 1}
+    interval_s: 0.5
+  - url: "http://127.0.0.1:{port}/health"
+    method: GET
+    interval_s: 0.5
+
+faults:
+  - type: process_kill
+    duration_s: 6
+    params: {restart_after_s: 3}
+
+windows:
+  baseline_s: 3
+  recovery_s: 4
+
+slo:
+  - name: downtime is bounded by the restart delay
+    window: fault
+    probe: 0
+    error_rate_max: 0.8
+  - name: recovers cleanly after restart
+    window: recovery
+    probe: 0
+    p95_latency_ms: 300
+    error_rate_max: 0.05

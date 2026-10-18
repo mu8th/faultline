@@ -87,3 +87,13 @@ def test_negative_probe_index_rejected(tmp_path):
     p.write_text(text, encoding="utf-8")
     with pytest.raises(ExperimentLoadError):
         load_experiment(p)
+
+
+def test_target_env_rejects_invalid_names():
+    from pydantic import ValidationError
+
+    from faultline.models import TargetSpec
+
+    assert TargetSpec(command=["x"], env={"FLAG": "1"}).env == {"FLAG": "1"}
+    with pytest.raises(ValidationError):
+        TargetSpec(command=["x"], env={"A=B": "1"})

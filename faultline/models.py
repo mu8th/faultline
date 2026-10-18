@@ -40,6 +40,18 @@ class TargetSpec(BaseModel):
     # Working directory for spawned targets; relative paths resolve against the
     # experiment file's location.
     cwd: str | None = None
+    # Extra environment variables for spawned targets, merged over FaultLine's
+    # own environment. Lets one experiment compare configurations of the same
+    # service (for example a feature flag or a cache toggle) without a shell.
+    env: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("env")
+    @classmethod
+    def _check_env(cls, v: dict[str, str]) -> dict[str, str]:
+        for key in v:
+            if not key or "=" in key or "\0" in key:
+                raise ValueError(f"invalid environment variable name {key!r}")
+        return v
 
     @field_validator("health_url")
     @classmethod

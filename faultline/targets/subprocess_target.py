@@ -3,7 +3,8 @@
 The command is an argv list (never a shell string). Two placeholders are
 resolved at run time: "{python}" becomes the interpreter running FaultLine
 (sys.executable), so targets always see the same environment, and "{port}" in
-the command and health URL becomes a free port chosen at run time. Child
+the command and health URL becomes a free port chosen at run time. Optional
+``env`` entries are merged over FaultLine's own environment. Child
 stdout/stderr go to a temp log file whose tail is included in start errors, so a
 broken target command produces a readable failure instead of silence.
 """
@@ -11,6 +12,7 @@ broken target command produces a readable failure instead of silence.
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 import sys
 import tempfile
@@ -47,6 +49,8 @@ class SubprocessTarget(Target):
             self._health_url = spec.health_url
         cwd = spec.cwd
         self._cwd: str | None = cwd if (cwd and Path(cwd).is_absolute()) else None
+        extra_env = dict(getattr(spec, "env", None) or {})
+        self._env: dict[str, str] | None = {**os.environ, **extra_env} if extra_env else None
         self._proc: subprocess.Popen[bytes] | None = None
         self._log_path: Path | None = None
         self.pid: int | None = None
@@ -68,6 +72,7 @@ class SubprocessTarget(Target):
             self._proc = subprocess.Popen(
                 self._command,
                 cwd=self._cwd,
+                env=self._env,
                 stdout=out,
                 stderr=subprocess.STDOUT,
             )

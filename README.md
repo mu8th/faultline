@@ -1,5 +1,8 @@
 # FaultLine
 
+**[Try the live demo →](https://muath.online/#project-faultline)** Pick a fault, run a
+real experiment against a spawned service, then apply a mitigation and run it again.
+
 **Hypothesis-driven chaos testing for real processes.** Declare what you believe about your service under failure (an SLO hypothesis), let FaultLine inject bounded faults against a live target, watch it probe continuously, and get a pass/fail verdict with the evidence to back it up.
 
 FaultLine is not a load tester. It answers a different question: *when things break in specific, declared ways, does the system do what you said it would?*
@@ -58,6 +61,7 @@ target:
   kind: subprocess                       # or "external" for a service you do not own
   command: ["{python}", "-m", "myservice", "--port", "{port}"]   # argv list, never a shell string
   cwd: ..                                # relative to this file (or absolute)
+  env: {SHOP_WORKLOAD: "0"}              # optional, merged over FaultLine's environment
   health_url: "http://127.0.0.1:{port}/health"
   wait_timeout_s: 20
 

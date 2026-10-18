@@ -114,3 +114,24 @@ def test_external_target_upstream_address():
     )
     target = ExternalTarget(spec)
     assert target.upstream_address() == ("127.0.0.1", 9911)
+
+
+def test_subprocess_target_passes_extra_env():
+    # The server only starts when the variable arrives; otherwise it exits 3
+    # and start() fails with the log tail.
+    gated = "import os, sys\nif os.environ.get('FAULTLINE_TEST_FLAG') != 'on':\n    sys.exit(3)\n"
+    spec = TargetSpec(
+        kind="subprocess",
+        command=[sys.executable, "-c", gated + TINY_SERVER, "{port}"],
+        health_url="http://127.0.0.1:{port}/",
+        wait_timeout_s=15,
+        env={"FAULTLINE_TEST_FLAG": "on"},
+    )
+
+    async def scenario():
+        target = SubprocessTarget(spec, find_free_port())
+        await target.start()
+        assert target.pid is not None
+        await target.stop()
+
+    run_async(scenario())
